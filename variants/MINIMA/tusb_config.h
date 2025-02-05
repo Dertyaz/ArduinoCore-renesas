@@ -78,7 +78,11 @@
 #define CFG_TUD_CDC              1
 #define CFG_TUD_MSC              0
 #define CFG_TUD_HID              1
+#ifdef MIDI_ENABLED
+#define CFG_TUD_MIDI             1
+#else
 #define CFG_TUD_MIDI             0
+#endif
 #define CFG_TUD_VENDOR           0
 #define CFG_TUD_DFU_RUNTIME      1
 
@@ -92,6 +96,11 @@
 // MSC Buffer size of Device Mass storage
 #define CFG_TUD_MSC_EP_BUFSIZE   512
 
+#ifdef MIDI_ENABLED
+// MIDI FIFO size of TX and RX
+#define CFG_TUD_MIDI_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_MIDI_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#endif
 
 #ifdef __cplusplus
  }

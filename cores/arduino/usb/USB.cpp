@@ -57,6 +57,14 @@ extern "C" {
 #define USBD_MSD_EP_IN (0x84)
 #endif
 
+#ifndef USBD_MIDI_EP_OUT
+#define USBD_MIDI_EP_OUT (0x05)
+#endif
+
+#ifndef USBD_MIDI_EP_IN
+#define USBD_MIDI_EP_IN (0x85)
+#endif
+
 #define USBD_MSD_IN_OUT_SIZE (512)
 
 
@@ -73,6 +81,11 @@ extern "C" {
 #define USBD_STR_SERIAL (0x03)
 #define USBD_STR_CDC (0x04)
 #define USBD_STR_DFU_RT (0x05)
+#define USBD_STR_MIDI (0x06)
+
+#ifndef MIDI_DEVICE_NAME
+#define MIDI_DEVICE_NAME USB_NAME
+#endif
 
 const uint8_t *tud_descriptor_device_cb(void) {
     static tusb_desc_device_t usbd_desc_device = {
@@ -155,10 +168,24 @@ void __SetupUSBDescriptor() {
         };
 #else
         uint8_t msd_desc[0] = {};
-#endif
-        
+#endif     
 
         int usbd_desc_len = TUD_CONFIG_DESC_LEN + (__USBInstallSerial ? sizeof(cdc_desc) : 0) + (__USBGetHIDReport ? sizeof(hid_desc) : 0) + (__USBInstallMSD ? sizeof(msd_desc) : 0);
+
+        /*
+         * -----    MIDI
+         */ 
+
+#ifdef MIDI_ENABLED
+        interface_count += 2;
+        uint8_t midi_itf = (__USBInstallSerial ? 3 : 0) + (__USBGetHIDReport ? 1 : 0) + (__USBInstallMSD ? 1 : 0);
+        int ep_size = (tud_speed_get() == TUD_SPEED_HIGH) ? 512 : 64; 
+        uint8_t midi_desc[TUD_MIDI_DESC_LEN] = {
+            TUD_MIDI_DESCRIPTOR(midi_itf, USBD_STR_MIDI, USBD_MIDI_EP_OUT, USBD_MIDI_EP_IN, ep_size)
+        };
+
+        usbd_desc_len += sizeof(midi_desc);
+#endif
 
         uint8_t tud_cfg_desc[TUD_CONFIG_DESC_LEN] = {
             // Config number, interface count, string index, total length, attribute, power in mA
@@ -184,6 +211,10 @@ void __SetupUSBDescriptor() {
                 memcpy(ptr, msd_desc, sizeof(msd_desc));
                 ptr += sizeof(msd_desc);
             }
+#ifdef MIDI_ENABLED
+            memcpy(ptr, midi_desc, sizeof(midi_desc));
+            ptr += sizeof(midi_desc);
+#endif
         }
     }
 }
@@ -211,6 +242,7 @@ const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         [USBD_STR_SERIAL] = idString,
         [USBD_STR_CDC] = "CDC Port",
         [USBD_STR_DFU_RT] = "DFU-RT Port",
+        [USBD_STR_MIDI] = MIDI_DEVICE_NAME,
     };
 
     if (!idString[0]) {
